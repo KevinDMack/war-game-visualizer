@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "war-game-visualizer.labels" . | nindent 4 }}
+    app.kubernetes.io/name: web-app
+  annotations:
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "web-app"
+    dapr.io/app-port: {{ .Values.webApp.service.port | quote }}
+spec:
+  replicas: {{ .Values.webApp.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "war-game-visualizer.webApp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "war-game-visualizer.webApp.selectorLabels" . | nindent 8 }}
+        azure.workload.identity/use: "true"
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "web-app"
+        dapr.io/app-port: {{ .Values.webApp.service.port | quote }}
+    spec:
+      serviceAccountName: {{ .Values.workloadIdentity.serviceAccountName }}
+      containers:
+        - name: web-app
+          image: "{{ .Values.global.acrLoginServer }}/{{ .Values.webApp.image.repository }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.webApp.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.webApp.service.port }}
+              protocol: TCP
+          env:
+            - name: CESIUM_ION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: sql-connection-string
+                  key: value
+                  optional: true
+          resources:
+            {{- toYaml .Values.webApp.resources | nindent 12 }}
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: azure-kv-secrets
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scenario-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "war-game-visualizer.labels" . | nindent 4 }}
+    app.kubernetes.io/name: scenario-service
+  annotations:
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "scenario-service"
+    dapr.io/app-port: {{ .Values.scenarioService.service.port | quote }}
+spec:
+  replicas: {{ .Values.scenarioService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "war-game-visualizer.scenarioService.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "war-game-visualizer.scenarioService.selectorLabels" . | nindent 8 }}
+        azure.workload.identity/use: "true"
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "scenario-service"
+        dapr.io/app-port: {{ .Values.scenarioService.service.port | quote }}
+    spec:
+      serviceAccountName: {{ .Values.workloadIdentity.serviceAccountName }}
+      containers:
+        - name: scenario-service
+          image: "{{ .Values.global.acrLoginServer }}/{{ .Values.scenarioService.image.repository }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.scenarioService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.scenarioService.service.port }}
+              protocol: TCP
+          env:
+            - name: SQL_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: sql-connection-string
+                  key: value
+          resources:
+            {{- toYaml .Values.scenarioService.resources | nindent 12 }}
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: azure-kv-secrets
