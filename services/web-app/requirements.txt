@@ -3,5 +3,5 @@ requests==2.32.3
 python-dotenv==1.0.1
 dapr==1.13.0
 grpcio==1.64.1
-protobuf==5.27.2
+protobuf==5.29.6
 gunicorn==22.0.0
