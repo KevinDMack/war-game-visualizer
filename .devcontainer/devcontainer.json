@@ -31,8 +31,8 @@
         "ms-kubernetes-tools.vscode-kubernetes-tools",
         "hashicorp.terraform",
         "ms-python.python",
-        "redhat.vscode-yaml",
         "ms-python.vscode-pylance",
+        "redhat.vscode-yaml"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
