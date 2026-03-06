@@ -1,0 +1,72 @@
+# Global settings
+global:
+  environment: dev
+  acrLoginServer: ""          # e.g. wargamevisualizerdevacr.azurecr.io
+  imageTag: latest
+
+# Namespace for the application
+namespace: war-game-visualizer
+
+# Workload Identity settings (populated by Terraform outputs)
+workloadIdentity:
+  clientId: ""                # azurerm_user_assigned_identity.aks_workload.client_id
+  serviceAccountName: workload-sa
+
+# Key Vault CSI driver settings
+keyVault:
+  name: ""                    # azurerm_key_vault.main.name
+  tenantId: ""                # Azure tenant ID
+  secretObjects:
+    - secretName: sql-connection-string
+      keyVaultSecretName: sql-connection-string
+    - secretName: cesium-ion-token
+      keyVaultSecretName: cesium-ion-token
+
+# Dapr configuration
+dapr:
+  enabled: true
+  pubsub:
+    componentName: pubsub
+    brokerType: redis         # change to azure-servicebus for production
+
+# Web App service
+webApp:
+  replicaCount: 1
+  image:
+    repository: web-app
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 5000
+  ingress:
+    enabled: true
+    className: nginx
+    annotations: {}
+    host: ""                  # e.g. wargame.example.com
+    tls: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    CESIUM_ION_TOKEN: ""      # Set via Key Vault secret
+
+# Scenario Service
+scenarioService:
+  replicaCount: 1
+  image:
+    repository: scenario-service
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 5001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

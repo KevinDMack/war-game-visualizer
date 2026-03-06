@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package wargame.v1;
+
+option csharp_namespace = "WargameVisualizer.Protos";
+
+// Represents a geographic bounding box defined by two lat/lon corners.
+message BoundingBox {
+  // Minimum (south-west) latitude in decimal degrees
+  double min_latitude = 1;
+  // Minimum (south-west) longitude in decimal degrees
+  double min_longitude = 2;
+  // Maximum (north-east) latitude in decimal degrees
+  double max_latitude = 3;
+  // Maximum (north-east) longitude in decimal degrees
+  double max_longitude = 4;
+}
+
+// A wargame scenario.
+message Scenario {
+  // Unique identifier for the scenario (UUID string)
+  string scenario_id = 1;
+  // Human-readable name of the scenario
+  string scenario_name = 2;
+  // Short narrative summary of the scenario
+  string summary = 3;
+  // Geographic bounding box for the scenario on the map
+  BoundingBox bounding_box = 4;
+}
+
+// Request / response messages for the Scenario service
+
+message GetScenarioRequest {
+  string scenario_id = 1;
+}
+
+message GetScenarioResponse {
+  Scenario scenario = 1;
+}
+
+message ListScenariosRequest {
+  int32 page_size  = 1;
+  string page_token = 2;
+}
+
+message ListScenariosResponse {
+  repeated Scenario scenarios    = 1;
+  string            next_page_token = 2;
+}
+
+message CreateScenarioRequest {
+  Scenario scenario = 1;
+}
+
+message CreateScenarioResponse {
+  Scenario scenario = 1;
+}
+
+message UpdateScenarioRequest {
+  Scenario scenario = 1;
+}
+
+message UpdateScenarioResponse {
+  Scenario scenario = 1;
+}
+
+message DeleteScenarioRequest {
+  string scenario_id = 1;
+}
+
+message DeleteScenarioResponse {
+  bool success = 1;
+}
+
+// ScenarioService exposes CRUD operations for scenarios.
+service ScenarioService {
+  rpc GetScenario(GetScenarioRequest) returns (GetScenarioResponse);
+  rpc ListScenarios(ListScenariosRequest) returns (ListScenariosResponse);
+  rpc CreateScenario(CreateScenarioRequest) returns (CreateScenarioResponse);
+  rpc UpdateScenario(UpdateScenarioRequest) returns (UpdateScenarioResponse);
+  rpc DeleteScenario(DeleteScenarioRequest) returns (DeleteScenarioResponse);
+}

@@ -1,0 +1,16 @@
+# Dapr pub/sub component – uses Redis by default; swap broker for production.
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: {{ .Values.dapr.pubsub.componentName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "war-game-visualizer.labels" . | nindent 4 }}
+spec:
+  type: pubsub.{{ .Values.dapr.pubsub.brokerType }}
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "redis-master:6379"
+    - name: redisPassword
+      value: ""

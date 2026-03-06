@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>War Game Visualizer</title>
+
+  <!-- CesiumJS -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset & Layout                                                       */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      overflow: hidden;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Left Sidebar – Scenario List                                         */
+    /* ------------------------------------------------------------------ */
+    #sidebar {
+      width: 280px;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      background: #16213e;
+      border-right: 1px solid #0f3460;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 16px;
+      background: #0f3460;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    #sidebar-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #e94560;
+    }
+
+    #btn-add-scenario {
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    #btn-add-scenario:hover { background: #c73652; }
+
+    #scenario-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .scenario-item {
+      background: #0f3460;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .scenario-item:hover { background: #1a4a80; }
+    .scenario-item.active { border-left-color: #e94560; background: #1a4a80; }
+
+    .scenario-item-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .scenario-item-summary {
+      font-size: 0.75rem;
+      color: #9ab0d0;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Globe container                                                      */
+    /* ------------------------------------------------------------------ */
+    #cesium-container {
+      flex: 1;
+      position: relative;
+    }
+
+    #cesiumContainer {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Right slide-out panel – Scenario Detail                              */
+    /* ------------------------------------------------------------------ */
+    #detail-panel {
+      position: absolute;
+      top: 0;
+      right: -360px;
+      width: 340px;
+      height: 100%;
+      background: #16213e;
+      border-left: 1px solid #0f3460;
+      transition: right 0.3s ease;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #detail-panel.open { right: 0; }
+
+    #detail-panel-header {
+      background: #0f3460;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #detail-panel-header h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e94560;
+    }
+    #btn-close-detail {
+      background: none;
+      border: none;
+      color: #9ab0d0;
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+    #btn-close-detail:hover { color: #e0e0e0; }
+
+    #detail-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .detail-label {
+      font-size: 0.7rem;
+      color: #9ab0d0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 12px;
+    }
+    .detail-value {
+      font-size: 0.9rem;
+      color: #e0e0e0;
+      margin-top: 2px;
+    }
+
+    #detail-actions {
+      padding: 12px 16px;
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    #btn-edit-scenario { background: #0f3460; color: #e0e0e0; }
+    #btn-edit-scenario:hover { background: #1a4a80; }
+    #btn-delete-scenario { background: #6b1f2a; color: #e0e0e0; }
+    #btn-delete-scenario:hover { background: #9b2b3a; }
+
+    /* ------------------------------------------------------------------ */
+    /* Modal                                                                */
+    /* ------------------------------------------------------------------ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      width: 480px;
+      max-width: 95vw;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background: #0f3460;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e94560;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: #9ab0d0;
+      cursor: pointer;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+    .modal-close:hover { color: #e0e0e0; }
+
+    .modal-body { padding: 20px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: #9ab0d0;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      background: #0f3460;
+      border: 1px solid #1a4a80;
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus { border-color: #e94560; }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+
+    .bbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      border-top: 1px solid #0f3460;
+    }
+
+    .btn-secondary {
+      background: #0f3460;
+      color: #e0e0e0;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .btn-secondary:hover { background: #1a4a80; }
+
+    .btn-primary {
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .btn-primary:hover { background: #c73652; }
+
+    /* ------------------------------------------------------------------ */
+    /* Confirmation dialog                                                  */
+    /* ------------------------------------------------------------------ */
+    #confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #confirm-overlay.open { display: flex; }
+
+    #confirm-dialog {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      width: 360px;
+      max-width: 95vw;
+      padding: 24px;
+      text-align: center;
+    }
+    #confirm-dialog p { margin-bottom: 20px; color: #e0e0e0; line-height: 1.5; }
+    #confirm-dialog .confirm-actions { display: flex; gap: 12px; justify-content: center; }
+
+    /* ------------------------------------------------------------------ */
+    /* Loading / empty state                                                */
+    /* ------------------------------------------------------------------ */
+    #scenario-list-empty {
+      color: #9ab0d0;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 24px 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====================================================================== -->
+<!-- Left sidebar                                                            -->
+<!-- ====================================================================== -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>Scenarios</h2>
+    <button id="btn-add-scenario" title="Add new scenario">+ Add</button>
+  </div>
+  <div id="scenario-list">
+    <p id="scenario-list-empty">No scenarios yet. Click <strong>+ Add</strong> to create one.</p>
+  </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- Globe                                                                   -->
+<!-- ====================================================================== -->
+<div id="cesium-container">
+  <div id="cesiumContainer"></div>
+
+  <!-- Right slide-out detail panel (inside globe container so it overlays the globe) -->
+  <div id="detail-panel">
+    <div id="detail-panel-header">
+      <h3 id="detail-name">Scenario Detail</h3>
+      <button id="btn-close-detail" title="Close">✕</button>
+    </div>
+    <div id="detail-content">
+      <div class="detail-label">Scenario ID</div>
+      <div class="detail-value" id="detail-id"></div>
+
+      <div class="detail-label">Summary</div>
+      <div class="detail-value" id="detail-summary"></div>
+
+      <div class="detail-label">Bounding Box</div>
+      <div class="detail-value" id="detail-bbox"></div>
+    </div>
+    <div id="detail-actions">
+      <button class="btn-action" id="btn-edit-scenario">Edit</button>
+      <button class="btn-action" id="btn-delete-scenario">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- Add / Edit Scenario Modal                                               -->
+<!-- ====================================================================== -->
+<div class="modal-overlay" id="scenario-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add Scenario</h3>
+      <button class="modal-close" id="btn-modal-close" title="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="form-scenario-id" />
+
+      <div class="form-group">
+        <label for="form-name">Scenario Name</label>
+        <input type="text" id="form-name" placeholder="Enter scenario name" />
+      </div>
+
+      <div class="form-group">
+        <label for="form-summary">Summary</label>
+        <textarea id="form-summary" placeholder="Brief description of the scenario"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Bounding Box</label>
+        <div class="bbox-grid">
+          <div>
+            <label for="form-min-lat" style="font-size:0.72rem;color:#9ab0d0;">Min Latitude</label>
+            <input type="number" id="form-min-lat" step="any" placeholder="-90 to 90" />
+          </div>
+          <div>
+            <label for="form-min-lon" style="font-size:0.72rem;color:#9ab0d0;">Min Longitude</label>
+            <input type="number" id="form-min-lon" step="any" placeholder="-180 to 180" />
+          </div>
+          <div>
+            <label for="form-max-lat" style="font-size:0.72rem;color:#9ab0d0;">Max Latitude</label>
+            <input type="number" id="form-max-lat" step="any" placeholder="-90 to 90" />
+          </div>
+          <div>
+            <label for="form-max-lon" style="font-size:0.72rem;color:#9ab0d0;">Max Longitude</label>
+            <input type="number" id="form-max-lon" step="any" placeholder="-180 to 180" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-modal-cancel">Cancel</button>
+      <button class="btn-primary" id="btn-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- Delete Confirmation Dialog                                              -->
+<!-- ====================================================================== -->
+<div id="confirm-overlay">
+  <div id="confirm-dialog">
+    <p id="confirm-message">Are you sure you want to delete this scenario?</p>
+    <div class="confirm-actions">
+      <button class="btn-secondary" id="btn-confirm-cancel">Cancel</button>
+      <button class="btn-primary" id="btn-confirm-delete" style="background:#e94560;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- Application JavaScript                                                  -->
+<!-- ====================================================================== -->
+<script>
+  // -----------------------------------------------------------------------
+  // Cesium Viewer initialisation
+  // -----------------------------------------------------------------------
+  Cesium.Ion.defaultAccessToken = '{{ cesium_ion_token }}' || '';
+
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    animation: false,
+    baseLayerPicker: true,
+    fullscreenButton: false,
+    geocoder: false,
+    homeButton: true,
+    infoBox: false,
+    sceneModePicker: true,
+    selectionIndicator: false,
+    timeline: false,
+    navigationHelpButton: false,
+    creditContainer: document.createElement('div'), // hide default credit overlay
+  });
+
+  // -----------------------------------------------------------------------
+  // State
+  // -----------------------------------------------------------------------
+  let scenarios = [];
+  let activeScenarioId = null;
+
+  // -----------------------------------------------------------------------
+  // API helpers
+  // -----------------------------------------------------------------------
+  async function apiGet(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`GET ${url} failed: ${r.status}`);
+    return r.json();
+  }
+
+  async function apiPost(url, body) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`POST ${url} failed: ${r.status}`);
+    return r.json();
+  }
+
+  async function apiPut(url, body) {
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(`PUT ${url} failed: ${r.status}`);
+    return r.json();
+  }
+
+  async function apiDelete(url) {
+    const r = await fetch(url, { method: 'DELETE' });
+    if (!r.ok) throw new Error(`DELETE ${url} failed: ${r.status}`);
+    return r.json();
+  }
+
+  // -----------------------------------------------------------------------
+  // Render helpers
+  // -----------------------------------------------------------------------
+  function renderSidebarList() {
+    const list = document.getElementById('scenario-list');
+    const empty = document.getElementById('scenario-list-empty');
+
+    // Remove all scenario items (keep the empty-state paragraph)
+    list.querySelectorAll('.scenario-item').forEach(el => el.remove());
+
+    if (scenarios.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    scenarios.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'scenario-item' + (s.scenarioId === activeScenarioId ? ' active' : '');
+      item.dataset.id = s.scenarioId;
+      item.innerHTML = `
+        <div class="scenario-item-name">${escHtml(s.scenarioName)}</div>
+        <div class="scenario-item-summary">${escHtml(s.summary || '')}</div>
+      `;
+      item.addEventListener('click', () => selectScenario(s.scenarioId));
+      list.appendChild(item);
+    });
+  }
+
+  function renderDetailPanel(scenario) {
+    document.getElementById('detail-name').textContent = scenario.scenarioName;
+    document.getElementById('detail-id').textContent = scenario.scenarioId;
+    document.getElementById('detail-summary').textContent = scenario.summary || '—';
+
+    const bb = scenario.boundingBox || {};
+    document.getElementById('detail-bbox').textContent =
+      `SW (${bb.minLatitude ?? '?'}, ${bb.minLongitude ?? '?'}) — NE (${bb.maxLatitude ?? '?'}, ${bb.maxLongitude ?? '?'})`;
+
+    document.getElementById('detail-panel').classList.add('open');
+  }
+
+  // -----------------------------------------------------------------------
+  // Scenario selection
+  // -----------------------------------------------------------------------
+  function selectScenario(id) {
+    activeScenarioId = id;
+    renderSidebarList();
+
+    const scenario = scenarios.find(s => s.scenarioId === id);
+    if (!scenario) return;
+
+    renderDetailPanel(scenario);
+    flyToBoundingBox(scenario.boundingBox);
+  }
+
+  function flyToBoundingBox(bb) {
+    if (!bb) return;
+    try {
+      const rect = Cesium.Rectangle.fromDegrees(
+        parseFloat(bb.minLongitude),
+        parseFloat(bb.minLatitude),
+        parseFloat(bb.maxLongitude),
+        parseFloat(bb.maxLatitude)
+      );
+      viewer.camera.flyTo({ destination: rect, duration: 2 });
+    } catch (e) {
+      console.warn('Could not fly to bounding box', e);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Load scenarios
+  // -----------------------------------------------------------------------
+  async function loadScenarios() {
+    try {
+      const data = await apiGet('/api/scenarios');
+      scenarios = data.scenarios || [];
+      renderSidebarList();
+    } catch (e) {
+      console.error('Failed to load scenarios', e);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Modal helpers
+  // -----------------------------------------------------------------------
+  function openModal(scenario) {
+    const isEdit = !!scenario;
+    document.getElementById('modal-title').textContent = isEdit ? 'Edit Scenario' : 'Add Scenario';
+    document.getElementById('form-scenario-id').value = isEdit ? scenario.scenarioId : '';
+    document.getElementById('form-name').value = isEdit ? scenario.scenarioName : '';
+    document.getElementById('form-summary').value = isEdit ? (scenario.summary || '') : '';
+
+    const bb = (isEdit && scenario.boundingBox) || {};
+    document.getElementById('form-min-lat').value = bb.minLatitude ?? '';
+    document.getElementById('form-min-lon').value = bb.minLongitude ?? '';
+    document.getElementById('form-max-lat').value = bb.maxLatitude ?? '';
+    document.getElementById('form-max-lon').value = bb.maxLongitude ?? '';
+
+    document.getElementById('scenario-modal-overlay').classList.add('open');
+    document.getElementById('form-name').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('scenario-modal-overlay').classList.remove('open');
+  }
+
+  function getModalValues() {
+    return {
+      scenarioId: document.getElementById('form-scenario-id').value,
+      scenarioName: document.getElementById('form-name').value.trim(),
+      summary: document.getElementById('form-summary').value.trim(),
+      boundingBox: {
+        minLatitude:  parseFloat(document.getElementById('form-min-lat').value),
+        minLongitude: parseFloat(document.getElementById('form-min-lon').value),
+        maxLatitude:  parseFloat(document.getElementById('form-max-lat').value),
+        maxLongitude: parseFloat(document.getElementById('form-max-lon').value),
+      },
+    };
+  }
+
+  // -----------------------------------------------------------------------
+  // Save scenario (create or update)
+  // -----------------------------------------------------------------------
+  async function saveScenario() {
+    const values = getModalValues();
+    if (!values.scenarioName) {
+      alert('Scenario name is required.');
+      return;
+    }
+
+    try {
+      if (values.scenarioId) {
+        // Update
+        const data = await apiPut(`/api/scenarios/${values.scenarioId}`, values);
+        const updated = data.scenario;
+        scenarios = scenarios.map(s => s.scenarioId === updated.scenarioId ? updated : s);
+        if (activeScenarioId === updated.scenarioId) renderDetailPanel(updated);
+      } else {
+        // Create
+        const data = await apiPost('/api/scenarios', values);
+        const created = data.scenario;
+        scenarios.push(created);
+      }
+      closeModal();
+      renderSidebarList();
+    } catch (e) {
+      console.error('Failed to save scenario', e);
+      alert('Failed to save scenario. See console for details.');
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Delete scenario
+  // -----------------------------------------------------------------------
+  function promptDeleteScenario() {
+    const scenario = scenarios.find(s => s.scenarioId === activeScenarioId);
+    if (!scenario) return;
+    document.getElementById('confirm-message').textContent =
+      `Are you sure you want to delete "${scenario.scenarioName}"? This action cannot be undone.`;
+    document.getElementById('confirm-overlay').classList.add('open');
+  }
+
+  async function confirmDeleteScenario() {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    try {
+      await apiDelete(`/api/scenarios/${activeScenarioId}`);
+      scenarios = scenarios.filter(s => s.scenarioId !== activeScenarioId);
+      activeScenarioId = null;
+      document.getElementById('detail-panel').classList.remove('open');
+      renderSidebarList();
+    } catch (e) {
+      console.error('Failed to delete scenario', e);
+      alert('Failed to delete scenario. See console for details.');
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Escape HTML
+  // -----------------------------------------------------------------------
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // -----------------------------------------------------------------------
+  // Event wiring
+  // -----------------------------------------------------------------------
+  document.getElementById('btn-add-scenario').addEventListener('click', () => openModal(null));
+  document.getElementById('btn-modal-close').addEventListener('click', closeModal);
+  document.getElementById('btn-modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('btn-modal-save').addEventListener('click', saveScenario);
+
+  document.getElementById('btn-close-detail').addEventListener('click', () => {
+    document.getElementById('detail-panel').classList.remove('open');
+    activeScenarioId = null;
+    renderSidebarList();
+  });
+
+  document.getElementById('btn-edit-scenario').addEventListener('click', () => {
+    const scenario = scenarios.find(s => s.scenarioId === activeScenarioId);
+    if (scenario) openModal(scenario);
+  });
+
+  document.getElementById('btn-delete-scenario').addEventListener('click', promptDeleteScenario);
+
+  document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+    document.getElementById('confirm-overlay').classList.remove('open');
+  });
+  document.getElementById('btn-confirm-delete').addEventListener('click', confirmDeleteScenario);
+
+  // Close modal overlay when clicking outside the modal box
+  document.getElementById('scenario-modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('scenario-modal-overlay')) closeModal();
+  });
+
+  // -----------------------------------------------------------------------
+  // Bootstrap
+  // -----------------------------------------------------------------------
+  loadScenarios();
+</script>
+</body>
+</html>
