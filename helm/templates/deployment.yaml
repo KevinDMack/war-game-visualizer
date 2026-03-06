@@ -38,7 +38,7 @@ spec:
             - name: CESIUM_ION_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: sql-connection-string
+                  name: cesium-ion-token
                   key: value
                   optional: true
           resources:

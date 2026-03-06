@@ -58,6 +58,13 @@ variable "storage_account_replication_type" {
   default     = "LRS"
 }
 
+variable "cesium_ion_token" {
+  description = "Cesium Ion access token stored in Key Vault"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

@@ -19,6 +19,8 @@ keyVault:
   secretObjects:
     - secretName: sql-connection-string
       keyVaultSecretName: sql-connection-string
+    - secretName: cesium-ion-token
+      keyVaultSecretName: cesium-ion-token
 
 # Dapr configuration
 dapr:

@@ -165,6 +165,14 @@ resource "azurerm_key_vault_secret" "sql_connection_string" {
   depends_on   = [azurerm_role_assignment.kv_secrets_officer_deployer]
 }
 
+# Placeholder for Cesium Ion token – update value via Azure Portal or CLI after first deploy
+resource "azurerm_key_vault_secret" "cesium_ion_token" {
+  name         = "cesium-ion-token"
+  value        = var.cesium_ion_token
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_secrets_officer_deployer]
+}
+
 # ---------------------------------------------------------------------------
 # AKS Cluster
 # ---------------------------------------------------------------------------

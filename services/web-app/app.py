@@ -4,10 +4,8 @@ A Flask application that serves the Cesium-based globe UI and proxies
 scenario CRUD operations to the scenario-service via Dapr.
 """
 
-import json
 import os
 import uuid
-from dataclasses import asdict, dataclass, field
 from typing import List, Optional
 
 import requests
