@@ -1,0 +1,125 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build: web-app",
+      "type": "shell",
+      "command": "./scripts/build-and-push.sh web-app ${input:imageTag}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build: scenario-service",
+      "type": "shell",
+      "command": "./scripts/build-and-push.sh scenario-service ${input:imageTag}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy: Helm (dev)",
+      "type": "shell",
+      "command": "./scripts/deploy-helm.sh --env dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy: Helm (dry-run)",
+      "type": "shell",
+      "command": "./scripts/deploy-helm.sh --env dev --dry-run",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Init",
+      "type": "shell",
+      "command": "terraform init",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Plan",
+      "type": "shell",
+      "command": "terraform plan",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "dependsOn": ["Terraform: Init"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Apply",
+      "type": "shell",
+      "command": "terraform apply",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "dependsOn": ["Terraform: Plan"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "imageTag",
+      "type": "promptString",
+      "description": "Docker image tag to use",
+      "default": "latest"
+    }
+  ]
+}
