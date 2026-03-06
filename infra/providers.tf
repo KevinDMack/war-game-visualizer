@@ -19,10 +19,12 @@ terraform {
     storage_account_name = "tfstatesa"
     container_name       = "tfstate"
     key                  = "war-game-visualizer.tfstate"
+    use_azuread_auth     = true
   }
 }
 
 provider "azurerm" {
+  environment = var.azure_environment
   features {
     key_vault {
       purge_soft_delete_on_destroy    = true
@@ -31,6 +33,8 @@ provider "azurerm" {
   }
 }
 
-provider "azuread" {}
+provider "azuread" {
+  environment = var.azure_environment
+}
 
 provider "random" {}

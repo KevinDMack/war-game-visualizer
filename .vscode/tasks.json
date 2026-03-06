@@ -38,6 +38,24 @@
       "problemMatcher": []
     },
     {
+      "label": "Build: base image",
+      "type": "shell",
+      "command": "./scripts/build-base.sh ${input:imageTag}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Deploy: Helm (dev)",
       "type": "shell",
       "command": "./scripts/deploy-helm.sh --env dev",
@@ -70,6 +88,42 @@
       "problemMatcher": []
     },
     {
+      "label": "Terraform: Setup Backend (Public)",
+      "type": "shell",
+      "command": "./scripts/setup-terraform-backend.sh --env public",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Setup Backend (Azure Government)",
+      "type": "shell",
+      "command": "./scripts/setup-terraform-backend.sh --env usgovernment",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Terraform: Init",
       "type": "shell",
       "command": "terraform init",
@@ -90,7 +144,9 @@
       "options": {
         "cwd": "${workspaceFolder}/infra"
       },
-      "dependsOn": ["Terraform: Init"],
+      "dependsOn": [
+        "Terraform: Init"
+      ],
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
@@ -105,7 +161,57 @@
       "options": {
         "cwd": "${workspaceFolder}/infra"
       },
-      "dependsOn": ["Terraform: Plan"],
+      "dependsOn": [
+        "Terraform: Plan"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Init (Azure Government)",
+      "type": "shell",
+      "command": "terraform init",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Plan (Azure Government)",
+      "type": "shell",
+      "command": "terraform plan -var=\"azure_environment=usgovernment\"",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "dependsOn": [
+        "Terraform: Init (Azure Government)"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Apply (Azure Government)",
+      "type": "shell",
+      "command": "terraform apply -var=\"azure_environment=usgovernment\"",
+      "options": {
+        "cwd": "${workspaceFolder}/infra"
+      },
+      "dependsOn": [
+        "Terraform: Plan (Azure Government)"
+      ],
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",

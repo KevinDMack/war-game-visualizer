@@ -1,7 +1,18 @@
+variable "azure_environment" {
+  description = "Azure cloud environment (public or usgovernment)"
+  type        = string
+  default     = "public"
+
+  validation {
+    condition     = contains(["public", "usgovernment"], var.azure_environment)
+    error_message = "azure_environment must be either 'public' or 'usgovernment'."
+  }
+}
+
 variable "location" {
   description = "Azure region for all resources"
   type        = string
-  default     = "eastus"
+  default     = "usgovarizona"
 }
 
 variable "resource_group_name" {
