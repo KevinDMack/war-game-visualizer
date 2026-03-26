@@ -124,6 +124,34 @@
       "problemMatcher": []
     },
     {
+      "label": "Terraform: Delete Backend (Public)",
+      "type": "shell",
+      "command": "./scripts/delete-terraform-backend.sh --env public",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform: Delete Backend (Azure Government)",
+      "type": "shell",
+      "command": "./scripts/delete-terraform-backend.sh --env usgovernment",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Terraform: Init",
       "type": "shell",
       "command": "terraform init",

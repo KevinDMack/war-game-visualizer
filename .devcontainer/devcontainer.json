@@ -18,9 +18,12 @@
     },
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
     }
   },
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y gnupg software-properties-common && sudo add-apt-repository 'deb [arch=amd64] https://apt.releases.hashicorp.com jammy main' && sudo apt-get update && sudo apt-get install -y terraform && pip install -r services/web-app/requirements.txt 2>/dev/null || true",
+  "postCreateCommand": "pip install -r services/web-app/requirements.txt 2>/dev/null || true",
   "customizations": {
     "vscode": {
       "extensions": [
