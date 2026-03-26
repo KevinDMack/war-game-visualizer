@@ -1,0 +1,24 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Test results
+**/TestResults/
+
+# IDE and editor files
+.vs/
+.idea/
+*.user
+*.suo
+
+# macOS
+.DS_Store
+
+# Git
+.git/
+.github/
+
+# Terraform state
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup

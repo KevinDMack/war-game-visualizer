@@ -116,11 +116,13 @@ build_service() {
   local image_name="${service}:${tag}"
   log "Building Docker image: ${image_name}"
 
+  # Use the repository root as the build context so that cross-project
+  # COPY instructions (e.g. referencing libraries/) work for all services.
   docker build \
     --file "${service_dir}/Dockerfile" \
     --tag "${image_name}" \
     --build-arg BASE_IMAGE="${base_image}" \
-    "${service_dir}"
+    "${REPO_ROOT}"
 
   log "Image built successfully: ${image_name}"
 }
