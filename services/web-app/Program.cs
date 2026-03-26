@@ -80,6 +80,9 @@ app.MapGet("/api/scenarios", async (IHttpClientFactory factory) =>
 // GET /api/scenarios/{id}
 app.MapGet("/api/scenarios/{id}", async (string id, IHttpClientFactory factory) =>
 {
+    if (!Guid.TryParse(id, out _))
+        return Results.BadRequest(new { error = "Invalid scenario ID format" });
+
     if (await IsDaprAvailable(factory))
     {
         var client = factory.CreateClient("dapr");
@@ -100,20 +103,20 @@ app.MapPost("/api/scenarios", async (HttpRequest request, IHttpClientFactory fac
 {
     using var reader = new StreamReader(request.Body);
     var body = await reader.ReadToEndAsync();
+    var data = JsonNode.Parse(body)?.AsObject() ?? new JsonObject();
+    if (!data.ContainsKey("scenarioId"))
+        data["scenarioId"] = Guid.NewGuid().ToString();
 
     if (await IsDaprAvailable(factory))
     {
         var client = factory.CreateClient("dapr");
-        var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync($"{daprBaseUrl}/scenarios", content);
+        var sanitized = new StringContent(data.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+        var resp = await client.PostAsync($"{daprBaseUrl}/scenarios", sanitized);
         resp.EnsureSuccessStatusCode();
         var json = await resp.Content.ReadAsStringAsync();
         return Results.Content(json, "application/json", statusCode: 201);
     }
 
-    var data = JsonNode.Parse(body)?.AsObject() ?? new JsonObject();
-    if (!data.ContainsKey("scenarioId"))
-        data["scenarioId"] = Guid.NewGuid().ToString();
     scenarios.Add(data);
     return Results.Created($"/api/scenarios/{data["scenarioId"]}", new { scenario = data });
 });
@@ -121,23 +124,25 @@ app.MapPost("/api/scenarios", async (HttpRequest request, IHttpClientFactory fac
 // PUT /api/scenarios/{id}
 app.MapPut("/api/scenarios/{id}", async (string id, HttpRequest request, IHttpClientFactory factory) =>
 {
+    if (!Guid.TryParse(id, out _))
+        return Results.BadRequest(new { error = "Invalid scenario ID format" });
+
     using var reader = new StreamReader(request.Body);
     var body = await reader.ReadToEndAsync();
+    var data = JsonNode.Parse(body)?.AsObject() ?? new JsonObject();
+    data["scenarioId"] = id;
 
     if (await IsDaprAvailable(factory))
     {
         var client = factory.CreateClient("dapr");
-        var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-        var resp = await client.PutAsync($"{daprBaseUrl}/scenarios/{id}", content);
+        var sanitized = new StringContent(data.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+        var resp = await client.PutAsync($"{daprBaseUrl}/scenarios/{id}", sanitized);
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
             return Results.NotFound(new { error = "Not found" });
         resp.EnsureSuccessStatusCode();
         var json = await resp.Content.ReadAsStringAsync();
         return Results.Content(json, "application/json");
     }
-
-    var data = JsonNode.Parse(body)?.AsObject() ?? new JsonObject();
-    data["scenarioId"] = id;
     var idx = scenarios.FindIndex(s =>
         s.TryGetPropertyValue("scenarioId", out var v) && v?.GetValue<string>() == id);
     if (idx < 0)
@@ -149,6 +154,9 @@ app.MapPut("/api/scenarios/{id}", async (string id, HttpRequest request, IHttpCl
 // DELETE /api/scenarios/{id}
 app.MapDelete("/api/scenarios/{id}", async (string id, IHttpClientFactory factory) =>
 {
+    if (!Guid.TryParse(id, out _))
+        return Results.BadRequest(new { error = "Invalid scenario ID format" });
+
     if (await IsDaprAvailable(factory))
     {
         var client = factory.CreateClient("dapr");
