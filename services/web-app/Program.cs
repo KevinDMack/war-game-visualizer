@@ -180,3 +180,5 @@ app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
 
+// Make Program accessible for WebApplicationFactory in tests
+public partial class Program { }
