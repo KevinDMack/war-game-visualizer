@@ -1,0 +1,23 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Visual Studio cache/options directory
+.vs/
+
+# Rider IDE
+.idea/
+
+# macOS
+.DS_Store
+
+# Python (legacy artifacts)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/

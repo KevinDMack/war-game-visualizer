@@ -1,3 +1,5 @@
+@page
+@model WebApp.Pages.IndexModel
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -462,7 +464,7 @@
   // -----------------------------------------------------------------------
   // Cesium Viewer initialisation
   // -----------------------------------------------------------------------
-  Cesium.Ion.defaultAccessToken = '{{ cesium_ion_token }}' || '';
+  Cesium.Ion.defaultAccessToken = '@Model.CesiumIonToken' || '';
 
   const viewer = new Cesium.Viewer('cesiumContainer', {
     animation: false,

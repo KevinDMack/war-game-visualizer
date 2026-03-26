@@ -8,7 +8,7 @@ War Game Visualizer is a cloud-native, microservices-based application that lets
 
 **Key capabilities:**
 - **Scenario management** — Create, list, and view wargame scenarios via a REST API backed by a .NET microservice and Azure SQL.
-- **3D globe visualization** — A Python/Flask web frontend renders scenarios using CesiumJS with a Cesium Ion token for terrain and imagery.
+- **3D globe visualization** — A C#/ASP.NET Core web frontend renders scenarios using CesiumJS with a Cesium Ion token for terrain and imagery.
 - **Event-driven messaging** — Services communicate via [Dapr](https://dapr.io/) pub/sub, enabling loose coupling and extensibility.
 - **Cloud-native deployment** — Runs on Azure Kubernetes Service (AKS) with Helm, secured by Azure Key Vault (CSI driver + Workload Identity) and Azure Container Registry (ACR).
 - **Infrastructure as Code** — All Azure resources are provisioned with Terraform.
@@ -47,11 +47,13 @@ war-game-visualizer/
 │   ├── base/
 │   │   └── Dockerfile             # Shared .NET 8.0 base image (non-root user, ports 5001/3500/50001)
 │   └── web-app/
-│       ├── Dockerfile             # Python 3.12 slim image (non-root user, port 5000)
-│       ├── app.py                 # Flask application — serves UI and proxies scenario CRUD via Dapr
-│       ├── requirements.txt       # Python dependencies (Flask, Dapr SDK, Gunicorn, etc.)
-│       └── templates/
-│           └── index.html         # CesiumJS globe UI
+│       ├── Dockerfile             # .NET 8 multi-stage image (non-root user, port 5000)
+│       ├── WebApp.csproj          # ASP.NET Core 8 project file
+│       ├── Program.cs             # Minimal API — serves UI and proxies scenario CRUD via Dapr
+│       ├── appsettings.json       # Default application settings
+│       └── Pages/
+│           ├── Index.cshtml       # Razor page — CesiumJS globe UI
+│           └── Index.cshtml.cs    # Page model supplying CesiumIonToken
 ├── LICENSE                        # MIT License
 └── README.md                      # This file
 ```
@@ -68,7 +70,7 @@ graph TD
 
     subgraph AKS["Azure Kubernetes Service (AKS)"]
         subgraph WebPod["web-app Pod"]
-            WebApp["Flask Web App\n(port 5000)"]
+            WebApp["ASP.NET Core Web App\n(port 5000)"]
             DaprWeb["Dapr Sidecar\n(port 3500)"]
         end
 
@@ -115,8 +117,8 @@ The repository includes a [VS Code Dev Container](.devcontainer/devcontainer.jso
 
 1. Open the repository in VS Code.
 2. When prompted, select **Reopen in Container** (or run **Dev Containers: Reopen in Container** from the command palette).
-3. The container will build and install: .NET 8.0, Python dependencies, Azure CLI, kubectl, Helm, Minikube, and k9s.
-4. Forwarded ports: `5000` (Flask), `5001` (ASP.NET), `3500` (Dapr).
+3. The container will build and install: .NET 8.0, Azure CLI, kubectl, Helm, Minikube, and k9s.
+4. Forwarded ports: `5000` (ASP.NET Core web-app), `5001` (ASP.NET Core scenario-service), `3500` (Dapr).
 
 ---
 
@@ -214,7 +216,7 @@ export ACR_NAME="wargamevisualizerdevacr"
 ### Examples
 
 ```bash
-# Build and push the Flask web app with the 'latest' tag
+# Build and push the ASP.NET Core web app with the 'latest' tag
 ./scripts/build-and-push.sh web-app latest
 
 # Build and push with a specific version tag
