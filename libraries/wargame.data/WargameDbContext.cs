@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using WargameData.Entities;
+using WargameVisualizer.Protos;
 
 namespace WargameData;
 
 /// <summary>
 /// Entity Framework Core database context for the War Game Visualizer application.
-/// Provides access to the <see cref="Scenarios"/> table backed by Azure SQL.
+/// Uses the proto-generated <see cref="Scenario"/> and <see cref="BoundingBox"/> types
+/// directly as EF entity models, eliminating any duplication between the proto
+/// definitions and the database schema.
 /// </summary>
 public class WargameDbContext : DbContext
 {
@@ -18,15 +20,15 @@ public class WargameDbContext : DbContext
     {
     }
 
-    /// <summary>The Scenarios table.</summary>
-    public DbSet<ScenarioEntity> Scenarios { get; set; }
+    /// <summary>The Scenarios table, typed directly to the proto-generated <see cref="Scenario"/> class.</summary>
+    public DbSet<Scenario> Scenarios { get; set; }
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<ScenarioEntity>(entity =>
+        modelBuilder.Entity<Scenario>(entity =>
         {
             entity.ToTable("Scenarios");
 
@@ -44,8 +46,10 @@ public class WargameDbContext : DbContext
                   .HasMaxLength(2048)
                   .IsRequired();
 
-            // BoundingBox is an owned entity – its columns are stored in the
-            // Scenarios table with an "BoundingBox_" column-name prefix.
+            // BoundingBox is an owned entity – its columns are stored inline in the
+            // Scenarios table with a "BoundingBox_" column-name prefix.
+            // The proto-generated BoundingBox class is used directly; EF Core maps
+            // its read-write scalar properties to columns via Fluent API.
             entity.OwnsOne(s => s.BoundingBox, bb =>
             {
                 bb.Property(b => b.MinLatitude).HasColumnName("BoundingBox_MinLatitude");

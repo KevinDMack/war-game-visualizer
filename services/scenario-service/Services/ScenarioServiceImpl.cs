@@ -1,7 +1,6 @@
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using WargameData;
-using WargameData.Entities;
 using WargameVisualizer.Protos;
 
 namespace ScenarioService.Services;
@@ -10,6 +9,10 @@ namespace ScenarioService.Services;
 /// gRPC service implementation for the <see cref="WargameVisualizer.Protos.ScenarioService"/>
 /// defined in scenario.proto.  Handles all CRUD operations for wargame scenarios
 /// using Entity Framework Core via <see cref="WargameDbContext"/>.
+///
+/// The proto-generated <see cref="Scenario"/> and <see cref="BoundingBox"/> classes are
+/// used directly as EF entity types, so no mapping between entity and proto objects is
+/// required.
 /// </summary>
 public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.ScenarioServiceBase
 {
@@ -32,19 +35,19 @@ public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.Scen
     public override async Task<GetScenarioResponse> GetScenario(
         GetScenarioRequest request, ServerCallContext context)
     {
-        var entity = await _db.Scenarios
+        var scenario = await _db.Scenarios
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.ScenarioId == request.ScenarioId,
                                  context.CancellationToken);
 
-        if (entity is null)
+        if (scenario is null)
         {
             throw new RpcException(
                 new Status(StatusCode.NotFound,
                            $"Scenario '{request.ScenarioId}' not found."));
         }
 
-        return new GetScenarioResponse { Scenario = ToProto(entity) };
+        return new GetScenarioResponse { Scenario = scenario };
     }
 
     // -----------------------------------------------------------------------
@@ -69,13 +72,13 @@ public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.Scen
         var query = _db.Scenarios.AsNoTracking().OrderBy(s => s.ScenarioId);
         int totalCount = await query.CountAsync(context.CancellationToken);
 
-        var entities = await query
+        var scenarios = await query
             .Skip(pageIndex * pageSize)
             .Take(pageSize)
             .ToListAsync(context.CancellationToken);
 
         var response = new ListScenariosResponse();
-        response.Scenarios.AddRange(entities.Select(ToProto));
+        response.Scenarios.AddRange(scenarios);
 
         // Provide next page token when there are more results
         bool hasNextPage = (pageIndex + 1) * pageSize < totalCount;
@@ -101,28 +104,33 @@ public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.Scen
                 new Status(StatusCode.InvalidArgument, "Scenario must be provided."));
         }
 
-        var entity = ToEntity(request.Scenario);
+        // Clone the proto object so that changes made here don't mutate the
+        // incoming request, and so that EF tracks a fresh instance.
+        var scenario = request.Scenario.Clone();
 
         // Assign a new UUID if the client did not provide one
-        if (string.IsNullOrWhiteSpace(entity.ScenarioId))
+        if (string.IsNullOrWhiteSpace(scenario.ScenarioId))
         {
-            entity.ScenarioId = Guid.NewGuid().ToString();
+            scenario.ScenarioId = Guid.NewGuid().ToString();
         }
+
+        // Default BoundingBox to an empty instance if the client omitted it
+        scenario.BoundingBox ??= new BoundingBox();
 
         // Check for duplicate IDs
         bool exists = await _db.Scenarios
-            .AnyAsync(s => s.ScenarioId == entity.ScenarioId, context.CancellationToken);
+            .AnyAsync(s => s.ScenarioId == scenario.ScenarioId, context.CancellationToken);
         if (exists)
         {
             throw new RpcException(
                 new Status(StatusCode.AlreadyExists,
-                           $"Scenario '{entity.ScenarioId}' already exists."));
+                           $"Scenario '{scenario.ScenarioId}' already exists."));
         }
 
-        _db.Scenarios.Add(entity);
+        _db.Scenarios.Add(scenario);
         await _db.SaveChangesAsync(context.CancellationToken);
 
-        return new CreateScenarioResponse { Scenario = ToProto(entity) };
+        return new CreateScenarioResponse { Scenario = scenario };
     }
 
     // -----------------------------------------------------------------------
@@ -153,7 +161,7 @@ public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.Scen
         existing.ScenarioName = request.Scenario.ScenarioName;
         existing.Summary = request.Scenario.Summary;
 
-        existing.BoundingBox ??= new WargameData.Entities.BoundingBoxEntity();
+        existing.BoundingBox ??= new BoundingBox();
         if (request.Scenario.BoundingBox is not null)
         {
             existing.BoundingBox.MinLatitude  = request.Scenario.BoundingBox.MinLatitude;
@@ -164,7 +172,7 @@ public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.Scen
 
         await _db.SaveChangesAsync(context.CancellationToken);
 
-        return new UpdateScenarioResponse { Scenario = ToProto(existing) };
+        return new UpdateScenarioResponse { Scenario = existing };
     }
 
     // -----------------------------------------------------------------------
@@ -175,54 +183,20 @@ public class ScenarioServiceImpl : WargameVisualizer.Protos.ScenarioService.Scen
     public override async Task<DeleteScenarioResponse> DeleteScenario(
         DeleteScenarioRequest request, ServerCallContext context)
     {
-        var entity = await _db.Scenarios
+        var scenario = await _db.Scenarios
             .FirstOrDefaultAsync(s => s.ScenarioId == request.ScenarioId,
                                  context.CancellationToken);
 
-        if (entity is null)
+        if (scenario is null)
         {
             throw new RpcException(
                 new Status(StatusCode.NotFound,
                            $"Scenario '{request.ScenarioId}' not found."));
         }
 
-        _db.Scenarios.Remove(entity);
+        _db.Scenarios.Remove(scenario);
         await _db.SaveChangesAsync(context.CancellationToken);
 
         return new DeleteScenarioResponse { Success = true };
     }
-
-    // -----------------------------------------------------------------------
-    // Mapping helpers
-    // -----------------------------------------------------------------------
-
-    private static Scenario ToProto(ScenarioEntity entity) => new()
-    {
-        ScenarioId   = entity.ScenarioId,
-        ScenarioName = entity.ScenarioName,
-        Summary      = entity.Summary,
-        BoundingBox  = new BoundingBox
-        {
-            MinLatitude  = entity.BoundingBox.MinLatitude,
-            MinLongitude = entity.BoundingBox.MinLongitude,
-            MaxLatitude  = entity.BoundingBox.MaxLatitude,
-            MaxLongitude = entity.BoundingBox.MaxLongitude,
-        },
-    };
-
-    private static ScenarioEntity ToEntity(Scenario proto) => new()
-    {
-        ScenarioId   = proto.ScenarioId,
-        ScenarioName = proto.ScenarioName,
-        Summary      = proto.Summary,
-        BoundingBox  = proto.BoundingBox is null
-            ? new BoundingBoxEntity()
-            : new BoundingBoxEntity
-            {
-                MinLatitude  = proto.BoundingBox.MinLatitude,
-                MinLongitude = proto.BoundingBox.MinLongitude,
-                MaxLatitude  = proto.BoundingBox.MaxLatitude,
-                MaxLongitude = proto.BoundingBox.MaxLongitude,
-            },
-    };
 }

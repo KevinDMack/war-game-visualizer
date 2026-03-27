@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using WargameData;
-using WargameData.Entities;
 using ScenarioService.Services;
 using WargameVisualizer.Protos;
 using Grpc.Core;
@@ -10,6 +9,8 @@ namespace ScenarioService.Tests;
 /// <summary>
 /// Unit tests for <see cref="ScenarioServiceImpl"/> using an in-memory
 /// Entity Framework Core database.
+/// Proto-generated <see cref="Scenario"/> objects are used directly as EF entities,
+/// so there is no separate entity type to create in tests.
 /// </summary>
 public class ScenarioServiceTests : IDisposable
 {
@@ -106,10 +107,10 @@ public class ScenarioServiceTests : IDisposable
     [Fact]
     public async Task GetScenario_ExistingId_ReturnsScenario()
     {
-        var entity = await CreateScenarioEntityAsync("Charlie Strike");
+        var scenario = await CreateScenarioAsync("Charlie Strike");
 
         var response = await _service.GetScenario(
-            new GetScenarioRequest { ScenarioId = entity.ScenarioId }, CreateContext());
+            new GetScenarioRequest { ScenarioId = scenario.ScenarioId }, CreateContext());
 
         Assert.Equal("Charlie Strike", response.Scenario.ScenarioName);
     }
@@ -132,8 +133,8 @@ public class ScenarioServiceTests : IDisposable
     [Fact]
     public async Task ListScenarios_ReturnsAllScenarios()
     {
-        await CreateScenarioEntityAsync("Delta 1");
-        await CreateScenarioEntityAsync("Delta 2");
+        await CreateScenarioAsync("Delta 1");
+        await CreateScenarioAsync("Delta 2");
 
         var response = await _service.ListScenarios(
             new ListScenariosRequest { PageSize = 10 }, CreateContext());
@@ -145,7 +146,7 @@ public class ScenarioServiceTests : IDisposable
     public async Task ListScenarios_Pagination_ReturnsNextPageToken()
     {
         for (int i = 0; i < 5; i++)
-            await CreateScenarioEntityAsync($"Echo {i}");
+            await CreateScenarioAsync($"Echo {i}");
 
         var response = await _service.ListScenarios(
             new ListScenariosRequest { PageSize = 3 }, CreateContext());
@@ -158,7 +159,7 @@ public class ScenarioServiceTests : IDisposable
     public async Task ListScenarios_LastPage_HasNoNextPageToken()
     {
         for (int i = 0; i < 3; i++)
-            await CreateScenarioEntityAsync($"Foxtrot {i}");
+            await CreateScenarioAsync($"Foxtrot {i}");
 
         var response = await _service.ListScenarios(
             new ListScenariosRequest { PageSize = 10 }, CreateContext());
@@ -173,13 +174,13 @@ public class ScenarioServiceTests : IDisposable
     [Fact]
     public async Task UpdateScenario_ExistingId_UpdatesFields()
     {
-        var entity = await CreateScenarioEntityAsync("Golf Strike");
+        var scenario = await CreateScenarioAsync("Golf Strike");
 
         var response = await _service.UpdateScenario(new UpdateScenarioRequest
         {
             Scenario = new Scenario
             {
-                ScenarioId = entity.ScenarioId,
+                ScenarioId = scenario.ScenarioId,
                 ScenarioName = "Golf Strike Updated",
                 Summary = "Updated summary",
             },
@@ -221,10 +222,10 @@ public class ScenarioServiceTests : IDisposable
     [Fact]
     public async Task DeleteScenario_ExistingId_ReturnsSuccess()
     {
-        var entity = await CreateScenarioEntityAsync("Hotel Strike");
+        var scenario = await CreateScenarioAsync("Hotel Strike");
 
         var response = await _service.DeleteScenario(
-            new DeleteScenarioRequest { ScenarioId = entity.ScenarioId }, CreateContext());
+            new DeleteScenarioRequest { ScenarioId = scenario.ScenarioId }, CreateContext());
 
         Assert.True(response.Success);
     }
@@ -232,14 +233,14 @@ public class ScenarioServiceTests : IDisposable
     [Fact]
     public async Task DeleteScenario_ExistingId_RemovesFromDatabase()
     {
-        var entity = await CreateScenarioEntityAsync("India Strike");
+        var scenario = await CreateScenarioAsync("India Strike");
 
         await _service.DeleteScenario(
-            new DeleteScenarioRequest { ScenarioId = entity.ScenarioId }, CreateContext());
+            new DeleteScenarioRequest { ScenarioId = scenario.ScenarioId }, CreateContext());
 
         var ex = await Assert.ThrowsAsync<RpcException>(
             () => _service.GetScenario(
-                new GetScenarioRequest { ScenarioId = entity.ScenarioId }, CreateContext()));
+                new GetScenarioRequest { ScenarioId = scenario.ScenarioId }, CreateContext()));
         Assert.Equal(StatusCode.NotFound, ex.Status.StatusCode);
     }
 
@@ -261,21 +262,25 @@ public class ScenarioServiceTests : IDisposable
     private static ServerCallContext CreateContext() =>
         TestServerCallContext.Create();
 
-    private async Task<ScenarioEntity> CreateScenarioEntityAsync(string name)
+    /// <summary>
+    /// Creates and persists a <see cref="Scenario"/> proto object directly via EF Core.
+    /// No separate entity type is needed since the proto class IS the EF entity.
+    /// </summary>
+    private async Task<Scenario> CreateScenarioAsync(string name)
     {
-        var entity = new ScenarioEntity
+        var scenario = new Scenario
         {
             ScenarioId = Guid.NewGuid().ToString(),
             ScenarioName = name,
             Summary = $"Summary for {name}",
-            BoundingBox = new BoundingBoxEntity
+            BoundingBox = new BoundingBox
             {
                 MinLatitude = 0, MinLongitude = 0,
                 MaxLatitude = 1, MaxLongitude = 1,
             },
         };
-        _db.Scenarios.Add(entity);
+        _db.Scenarios.Add(scenario);
         await _db.SaveChangesAsync();
-        return entity;
+        return scenario;
     }
 }

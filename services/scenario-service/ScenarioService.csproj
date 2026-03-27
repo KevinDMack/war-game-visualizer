@@ -19,10 +19,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Protobuf Include="..\..\protos\scenario.proto" GrpcServices="Server" />
-  </ItemGroup>
-
+  <!-- Proto-generated types (message types + ScenarioServiceBase) are compiled
+       once in the wargame.data library and consumed here via project reference. -->
   <ItemGroup>
     <ProjectReference Include="..\..\libraries\wargame.data\wargame.data.csproj" />
   </ItemGroup>

@@ -21,7 +21,7 @@ namespace WargameData.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("WargameData.Entities.ScenarioEntity", b =>
+            modelBuilder.Entity("WargameVisualizer.Protos.Scenario", b =>
                 {
                     b.Property<string>("ScenarioId")
                         .HasMaxLength(36)
@@ -42,11 +42,11 @@ namespace WargameData.Migrations
                     b.ToTable("Scenarios", (string)null);
                 });
 
-            modelBuilder.Entity("WargameData.Entities.ScenarioEntity", b =>
+            modelBuilder.Entity("WargameVisualizer.Protos.Scenario", b =>
                 {
-                    b.OwnsOne("WargameData.Entities.BoundingBoxEntity", "BoundingBox", b1 =>
+                    b.OwnsOne("WargameVisualizer.Protos.BoundingBox", "BoundingBox", b1 =>
                         {
-                            b1.Property<string>("ScenarioEntityScenarioId")
+                            b1.Property<string>("ScenarioId")
                                 .HasColumnType("nvarchar(36)");
 
                             b1.Property<double>("MaxLatitude")
@@ -65,16 +65,15 @@ namespace WargameData.Migrations
                                 .HasColumnType("float")
                                 .HasColumnName("BoundingBox_MinLongitude");
 
-                            b1.HasKey("ScenarioEntityScenarioId");
+                            b1.HasKey("ScenarioId");
 
                             b1.ToTable("Scenarios");
 
                             b1.WithOwner()
-                                .HasForeignKey("ScenarioEntityScenarioId");
+                                .HasForeignKey("ScenarioId");
                         });
 
-                    b.Navigation("BoundingBox")
-                        .IsRequired();
+                    b.Navigation("BoundingBox");
                 });
 #pragma warning restore 612, 618
         }

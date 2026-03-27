@@ -17,10 +17,10 @@ namespace WargameData.Migrations
                     ScenarioId = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
                     ScenarioName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     Summary = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: false),
-                    BoundingBox_MinLatitude = table.Column<double>(type: "float", nullable: false),
-                    BoundingBox_MinLongitude = table.Column<double>(type: "float", nullable: false),
-                    BoundingBox_MaxLatitude = table.Column<double>(type: "float", nullable: false),
-                    BoundingBox_MaxLongitude = table.Column<double>(type: "float", nullable: false)
+                    BoundingBox_MinLatitude = table.Column<double>(type: "float", nullable: true),
+                    BoundingBox_MinLongitude = table.Column<double>(type: "float", nullable: true),
+                    BoundingBox_MaxLatitude = table.Column<double>(type: "float", nullable: true),
+                    BoundingBox_MaxLongitude = table.Column<double>(type: "float", nullable: true)
                 },
                 constraints: table =>
                 {
