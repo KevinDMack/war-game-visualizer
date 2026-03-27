@@ -1,15 +1,16 @@
 # war-game-visualizer – web-app
 # C# / ASP.NET Core 8 application serving the CesiumJS globe UI.
+# Build context: repository root (e.g. docker build -f services/web-app/Dockerfile .)
 
 # ---------- Build stage ----------
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["WebApp.csproj", "./"]
-RUN dotnet restore
+COPY ["services/web-app/WebApp.csproj", "services/web-app/"]
+RUN dotnet restore "services/web-app/WebApp.csproj"
 
-COPY . ./
-RUN dotnet publish -c Release -o /app/publish --no-restore
+COPY ["services/web-app/", "services/web-app/"]
+RUN dotnet publish "services/web-app/WebApp.csproj" -c Release -o /app/publish --no-restore
 
 # ---------- Runtime stage ----------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime

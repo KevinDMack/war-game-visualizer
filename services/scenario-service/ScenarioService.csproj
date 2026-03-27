@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ScenarioService</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Exclude the test project subdirectory from the main project's compilation -->
+  <ItemGroup>
+    <Compile Remove="ScenarioService.Tests/**" />
+    <Content Remove="ScenarioService.Tests/**" />
+    <None Remove="ScenarioService.Tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.63.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Proto-generated types (message types + ScenarioServiceBase) are compiled
+       once in the wargame.data library and consumed here via project reference. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\libraries\wargame.data\wargame.data.csproj" />
+  </ItemGroup>
+
+</Project>
