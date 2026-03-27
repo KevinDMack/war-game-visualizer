@@ -1,0 +1,71 @@
+name: Run Tests on Pull Request
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      scenario-service: ${{ steps.filter.outputs.scenario-service }}
+      web-app: ${{ steps.filter.outputs.web-app }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            scenario-service:
+              - 'services/scenario-service/**'
+              - 'libraries/wargame.data/**'
+              - 'protos/**'
+            web-app:
+              - 'services/web-app/**'
+              - 'libraries/wargame.data/**'
+
+  test-scenario-service:
+    name: Test - Scenario Service
+    needs: detect-changes
+    if: needs.detect-changes.outputs.scenario-service == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run scenario-service tests
+        run: |
+          dotnet test services/scenario-service/ScenarioService.Tests/ScenarioService.Tests.csproj \
+            --configuration Release \
+            --logger "console;verbosity=normal"
+
+  test-web-app:
+    name: Test - Web App
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web-app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run web-app tests
+        run: |
+          dotnet test services/web-app/WebApp.Tests/WebApp.Tests.csproj \
+            --configuration Release \
+            --logger "console;verbosity=normal"
