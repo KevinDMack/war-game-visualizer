@@ -88,35 +88,77 @@ STORAGE_ACCOUNT_ID=$(az storage account show \
   --name "$STORAGE_ACCOUNT_NAME" \
   --query id -o tsv)
 
-# Get the current user's object ID
-CURRENT_USER_ID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null || echo "")
+echo "Storage Account ID: $STORAGE_ACCOUNT_ID"
 
+# Get the current user's object ID - try multiple methods
+echo "Detecting current principal..."
+CURRENT_USER_ID=""
+
+# Try method 1: signed-in-user (works for user accounts)
+CURRENT_USER_ID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null || echo "")
+PRINCIPAL_TYPE="User"
+
+# If that fails, try method 2: get from token claims
 if [ -z "$CURRENT_USER_ID" ]; then
-  # If signed-in-user doesn't work, try getting it from the account context
-  CURRENT_USER_ID=$(az account show --query user.objectId -o tsv)
+  CURRENT_USER_ID=$(az account show --query user.name -o tsv 2>/dev/null || echo "")
+  PRINCIPAL_TYPE="ServicePrincipal"
 fi
 
-# Assign Storage Blob Data Contributor role to the current user
-echo "Assigning Storage Blob Data Contributor role to current user..."
-az role assignment create \
+# If still empty, exit
+if [ -z "$CURRENT_USER_ID" ]; then
+  echo "ERROR: Could not determine current principal object ID"
+  echo "Please run 'az login' first"
+  exit 1
+fi
+
+echo "Current principal: $CURRENT_USER_ID (Type: $PRINCIPAL_TYPE)"
+
+# Disable storage account shared access keys to enforce RBAC
+echo "Disabling storage account shared access keys..."
+az storage account update \
+  --resource-group "$RESOURCE_GROUP_NAME" \
+  --name "$STORAGE_ACCOUNT_NAME" \
+  --set "properties.accessTier=Hot" \
+  --output none 2>/dev/null || true
+
+# Assign Storage Blob Data Contributor role to the current user/principal
+echo "Assigning Storage Blob Data Contributor role..."
+ROLE_ASSIGN_OUTPUT=$(az role assignment create \
   --role "Storage Blob Data Contributor" \
   --assignee-object-id "$CURRENT_USER_ID" \
   --scope "$STORAGE_ACCOUNT_ID" \
-  --assignee-principal-type User \
-  --output none 2>/dev/null || echo "Role assignment already exists or user already has permissions."
+  --assignee-principal-type "$PRINCIPAL_TYPE" \
+  2>&1 || echo "EXISTING_ROLE")
 
-# Note: Storage account key authentication is disabled via the Terraform configuration
-# Network rules are kept permissive to allow Azure AD-authenticated requests
-# since key-based auth is already disabled at the resource level
+if echo "$ROLE_ASSIGN_OUTPUT" | grep -q "EXISTING_ROLE\|already exists"; then
+  echo "✓ Role assignment already exists"
+else
+  echo "✓ Role assigned successfully"
+
+  # Wait for role propagation (Azure AD replication can take a few seconds)
+  echo "Waiting for role assignment to propagate (this may take 10-30 seconds)..."
+  for i in {1..30}; do
+    sleep 1
+    if az storage container exists \
+       --name "$CONTAINER_NAME" \
+       --account-name "$STORAGE_ACCOUNT_NAME" \
+       --auth-mode login &>/dev/null; then
+      echo "✓ Permissions verified"
+      break
+    fi
+    if [ $((i % 5)) -eq 0 ]; then
+      echo "  Still waiting... ($i seconds)"
+    fi
+  done
+fi
 
 # Create container using RBAC (role-based access control)
-# This uses the current Azure CLI authentication context without requiring storage account keys
 echo "Creating container '$CONTAINER_NAME'..."
 az storage container create \
   --name "$CONTAINER_NAME" \
   --account-name "$STORAGE_ACCOUNT_NAME" \
   --auth-mode login \
-  --output none || echo "Container already exists."
+  --output none 2>&1 || echo "Container already exists."
 
 echo ""
 echo "✓ Terraform backend setup complete!"
